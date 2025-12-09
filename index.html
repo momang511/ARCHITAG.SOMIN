@@ -1,0 +1,635 @@
+<!-- ...existing code... -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1536, initial-scale=1.0">
+<title>ARCHITAG — My Archive</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ...existing styles... */
+body { margin: 0; background: #000; width: 100vw; height: 100vh; overflow: hidden; font-family: 'Source Code Pro', monospace; display: flex; justify-content: center; align-items: center; }
+.header-container { position: absolute; top: 20px; left: 40px; display: flex; align-items: center; z-index: 10; pointer-events: none; }
+.video-box { width: 100px; height: 56.25px; }
+video { width: 150%; height: 150%; object-fit: cover; display: block; }
+
+.label { position: absolute; width: 700px; opacity: 1; transform: rotate(0deg); transition: transform 0.2s ease, opacity 0s ease; z-index: 1; pointer-events: auto; }
+.label:hover { transform: scale(1.3); opacity: 1; }
+
+.center-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 30px; color: rgb(231, 231, 231); cursor: pointer; z-index: 2; }
+
+.archive-gallery { position: absolute; top: 0; right: -370px; width: 320px; height: 100vh; background: rgba(0, 0, 0, 0.9); display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 20px; overflow-y: auto; z-index: 8; transition: right 0.5s ease; border-left: 1px solid rgba(255,255,255,0.1); }
+.archive-gallery.visible { right: 0; }
+
+.archive-controls { width: 100%; display: flex; gap: 8px; justify-content: flex-end; align-items: center; margin-bottom: 6px; } /* 버튼을 오른쪽으로 정렬 */
+.btn { color: white; border: 1px solid rgba(255,255,255,0.12); padding: 6px 8px; cursor: pointer; font-size: 13px; background: transparent; }
+.btn.small { padding: 4px 6px; font-size:12px }
+
+.folder { width: 100%; background: rgba(255,255,255,0.03); border-radius: 6px; padding: 8px; color: #fff; font-size: 14px; position: relative; }
+.folder-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+.folder-content { margin-top: 8px; display: none; gap: 8px; flex-direction: column; }
+.folder.open .folder-content { display: flex; }
+
+.folder-flip-container { perspective: 600px; width: 100%; margin-bottom: 12px; }
+.folder-flip-inner { position: relative; width: 100%; height: 160px; transform-style: preserve-3d; transition: transform 0.6s; }
+.folder-flip-inner:hover { transform: rotateY(180deg); }
+.folder-face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 6px; background: url('로고배경 .png') center/cover no-repeat; display: flex; align-items: center; justify-content: center; }
+.folder-front { font-size: 18px; font-weight: 600; color: #000; }
+.folder-back { transform: rotateY(180deg); padding: 10px; }
+.folder-back img { width: 100%; height: 100%; object-fit: contain; }
+
+.archive-thumb { position: relative; width: 100%; height: 120px; border-radius: 8px; overflow: hidden; cursor: pointer; transition: transform 0.3s ease; }
+.archive-thumb:hover { transform: scale(1.02); }
+.archive-thumb img { width: 100%; height: 100%; object-fit: cover; display:block; }
+.archive-thumb .label { position: absolute; bottom: 8px; right: 10px; font-size: 14px; color: white; text-shadow: 0 0 5px rgba(0,0,0,0.8); font-weight: 500; pointer-events: none; }
+.archive-thumb .delete-archive { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.6); color: #fff; padding: 2px 6px; font-size:12px; border-radius:4px; cursor:pointer; }
+
+.archive-screen { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; background: #000; padding-top: 80px; overflow-y: auto; z-index: 9; }
+
+.back-arrow { position: absolute; bottom: 30px; left: 40px; color: white; font-size: 28px; cursor: pointer; opacity: 0.8; transition: opacity 0.3s; z-index: 20; pointer-events: auto; } /* z-index 추가로 클릭 불가 문제 해결 */
+.back-arrow:hover { opacity: 1; }
+
+.flip-container { perspective: 600px; }
+.flip-inner { width: 800px; height: 500px; position: relative; transform-style: preserve-3d; transition: transform 1s; cursor: pointer; }
+.flip-inner.flipped { transform: rotateY(180deg); }
+
+.face { position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 6px; background: url('로고배경 .png') center/cover no-repeat; display: flex; align-items: center; justify-content: center; }
+.front-face .overlay-text { font-size: 48px; color: #000; }
+.back-face { transform: rotateY(180deg); }
+.back-face img { width: 50%; height: 50%; object-fit: cover; border-radius: 6px; }
+
+.text-input { margin-top: 40px; border: none; outline: none; background: transparent; border-bottom: 2px solid #fff; color: #fff; font-size: 20px; width: 400px; text-align: center; opacity: 0; transition: opacity 1s ease; }
+
+.upload-box { margin-top: 30px; color: white; border: 1px solid white; padding: 10px 20px; cursor: pointer; opacity: 0; transition: opacity 0.6s ease; }
+
+.folder-select { margin-top: 12px; background: transparent; color: #fff; border: 1px solid rgba(255,255,255,0.12); padding: 6px 8px; border-radius: 6px; opacity: 0; transition: opacity 0.4s ease; }
+
+.archive-images { display: flex; flex-direction: column; align-items: center; gap: 15px; margin-top: 30px; width: 100%; max-width: 900px; padding: 0 20px; }
+.archive-images .preview { position: relative; width: 80%; max-width: 800px; border-radius: 6px; overflow: hidden; }
+.archive-images img { width: 100%; height: auto; display:block; object-fit: contain; }
+.archive-images .img-delete { position: absolute; top: 6px; right: 6px; background: rgba(0,0,0,0.6); color: #fff; padding: 4px 8px; font-size:12px; border-radius:4px; cursor:pointer; z-index: 30; }
+
+.screen-controls { margin-top: 18px; display:flex; gap:8px; z-index: 15; }
+.screen-controls .btn { opacity: 1; }
+
+.small-note { margin-top: 8px; color: rgba(255,255,255,0.6); font-size:13px; }
+
+
+</style>
+</head>
+<body>
+
+<div class="header-container">
+  <div class="video-box">
+    <video autoplay muted loop playsinline>
+      <source src="아치태그 에펙_3.mp4" type="video/mp4">
+    </video>
+  </div>
+</div>
+
+<!-- 오른쪽 아카이브: 컨트롤에서 새 폴더만 남김 -->
+<div class="archive-gallery" id="archiveGallery">
+  <div class="archive-controls">
+    <div class="btn" id="newFolderBtn">+ 새 폴더</div>
+  </div>
+</div>
+
+<div class="center-text" id="centerText">ARCHIVE</div>
+
+<!-- 아카이브 화면: 폴더 선택 UI 추가 -->
+<div class="archive-screen" id="archiveScreen">
+  <div class="flip-container" id="flipContainer">
+    <div class="flip-inner" id="flipInner">
+      <div class="face front-face">
+        <div class="overlay-text" id="overlayText"></div>
+      </div>
+      <div class="face back-face">
+        <div id="cardPreview" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 60px;">
+          <img id="previewImage" src="" style="max-width: 100%; max-height: 100%; object-fit: contain; display: none;">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <select id="folderSelect" class="folder-select"></select>
+  <input type="text" placeholder="Write archive name..." class="text-input" id="textInput">
+  <div style="display:flex; gap:8px; align-items:center;">
+    <div class="upload-box btn" id="uploadBox">+ ADD IMAGE</div>
+    <div class="screen-controls">
+      <div class="btn" id="saveBtn">저장</div>
+      <div class="btn" id="cancelBtn">취소</div>
+      <div class="btn" id="deleteArchiveBtn" style="display:none;background:rgba(255,0,0,0.12);">아카이브 삭제</div>
+    </div>
+  </div>
+
+  <input type="file" id="fileInput" accept="image/*" style="display:none;">
+  <div class="small-note" id="screenNote">이미지는 업로드 후 '저장'을 눌러 폴더에 저장됩니다.</div>
+  <div class="back-arrow" id="backArrow">←</div>
+</div>
+
+<script>
+
+  // 브라우저가 파일 떨어뜨렸을 때 페이지가 이동하는 것 방지
+  document.addEventListener("dragover", function (e) {
+    e.preventDefault();
+  });
+
+  document.addEventListener("drop", function (e) {
+    e.preventDefault();
+  });
+
+const labelSrc = "TAG .png";
+const labelCount = 50;
+const labels = [];
+
+
+function createLabels() {
+  const w = window.innerWidth, h = window.innerHeight;
+  for (let i = 0; i < labelCount; i++) {
+    const img = document.createElement("img");
+    img.src = labelSrc;
+    img.className = "label";
+    img.style.left = `${Math.random() * (w - 200)}px`;
+    img.style.top = `${Math.random() * (h - 200)}px`;
+    img.style.transform = `rotate(${(Math.random()-0.5)*60}deg)`;
+    document.body.appendChild(img);
+    labels.push(img);
+  }
+}
+createLabels();
+
+const centerText = document.getElementById("centerText");
+const archiveScreen = document.getElementById("archiveScreen");
+const flipInner = document.getElementById("flipInner");
+const flipContainer = document.getElementById("flipContainer");
+const overlayText = document.getElementById("overlayText");
+const textInput = document.getElementById("textInput");
+const uploadBox = document.getElementById("uploadBox");
+const fileInput = document.getElementById("fileInput");
+const uploadedImage = document.getElementById("uploadedImage");
+const backArrow = document.getElementById("backArrow");
+const archiveGallery = document.getElementById("archiveGallery");
+const archiveImages = document.getElementById("archiveImages");
+const newFolderBtn = document.getElementById("newFolderBtn");
+const folderSelect = document.getElementById("folderSelect");
+const saveBtn = document.getElementById("saveBtn");
+const cancelBtn = document.getElementById("cancelBtn");
+const deleteArchiveBtn = document.getElementById("deleteArchiveBtn");
+const screenNote = document.getElementById("screenNote");
+
+let currentArchiveName = "";     // when viewing existing archive, its name
+let pendingArchiveName = "";     // when creating new archive, name entered but not saved yet
+let currentFolder = "";          // when viewing existing archive, folder name
+let pendingFolder = "";          // folder selected for new archive (not saved until Save)
+let isCreating = false;          // create-mode flag
+let newImagesPreview = [];       // array of dataURLs for preview (not saved until Save)
+
+let archives = JSON.parse(localStorage.getItem("archives") || "{}"); // { archiveName: [dataUrl, ...] }
+let folders = JSON.parse(localStorage.getItem("folders") || "{}");   // { folderName: [archiveName, ...] }
+
+function saveState() {
+  localStorage.setItem("archives", JSON.stringify(archives));
+  localStorage.setItem("folders", JSON.stringify(folders));
+}
+
+/* 업데이트: 사이드에 폴더만 렌더, 아카이브 썸네일과 삭제 버튼 포함 */
+function updateGallery() {
+  // remove existing items except controls
+  Array.from(archiveGallery.children).slice(1).forEach(n => n.remove());
+
+  for (const fname in folders) {
+    const folderEl = document.createElement("div");
+    folderEl.className = "folder";
+
+    // Create flip card for folder
+    const flipCard = document.createElement("div");
+    flipCard.className = "folder-flip-container";
+    const firstArchive = (folders[fname] || [])[0];
+    const firstImage = firstArchive ? (archives[firstArchive] || [])[0] : "";
+
+    flipCard.innerHTML = `
+      <div class="folder-flip-inner">
+        <div class="folder-face folder-front">${fname}</div>
+        <div class="folder-face folder-back">
+          ${firstImage ? `<img src="${firstImage}">` : '<div style="color:rgba(255,255,255,0.5);">이미지 없음</div>'}
+        </div>
+      </div>
+    `;
+
+    const header = document.createElement("div");
+    header.className = "folder-header";
+    header.innerHTML = `<div>📁 ${fname}</div>
+                        <div style="display:flex;gap:6px;">
+                          <div class="btn small open-folder-btn">열기</div>
+                          <div class="btn small delete-folder-btn" style="background:rgba(255,0,0,0.08);">삭제</div>
+                        </div>`;
+    const content = document.createElement("div");
+    content.className = "folder-content";
+
+    (folders[fname] || []).forEach(archiveName => {
+      const imgs = archives[archiveName] || [];
+      if (!imgs.length) {
+        // show placeholder archive box if empty
+        const emptyDiv = document.createElement("div");
+        emptyDiv.className = "archive-thumb";
+        emptyDiv.style.display = "flex";
+        emptyDiv.style.alignItems = "center";
+        emptyDiv.style.justifyContent = "center";
+        emptyDiv.style.height = "48px";
+        emptyDiv.innerHTML = `<div style="color:rgba(255,255,255,0.7)">${archiveName} (비어있음)</div>
+                              <div class="delete-archive" data-archive="${archiveName}">삭제</div>`;
+        emptyDiv.onclick = () => openArchive(archiveName, fname);
+        content.appendChild(emptyDiv);
+        return;
+      }
+      const thumb = imgs[0];
+      const div = document.createElement("div");
+      div.className = "archive-thumb";
+      div.innerHTML = `<img src="${thumb}"><div class="label">${archiveName}</div>
+                       <div class="delete-archive" data-archive="${archiveName}">삭제</div>`;
+      // open archive when clicking the thumb (but not when clicking delete button)
+      div.addEventListener('click', (e) => {
+        if (e.target.classList.contains('delete-archive')) return;
+        openArchive(archiveName, fname);
+      });
+      // delete button
+      div.querySelector('.delete-archive').addEventListener('click', (e) => {
+        e.stopPropagation();
+        const an = e.currentTarget.getAttribute('data-archive');
+        if (!confirm(`${an} 아카이브를 삭제하시겠습니까?`)) return;
+        deleteArchive(an, fname);
+      });
+      content.appendChild(div);
+    });
+
+    // folder delete button
+    header.querySelector('.delete-folder-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!confirm(`폴더 "${fname}" 및 내부 아카이브를 모두 삭제하시겠습니까?`)) return;
+      deleteFolder(fname);
+    });
+
+    // open button toggles open
+    header.querySelector('.open-folder-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      folderEl.classList.toggle('open');
+    });
+
+    folderEl.appendChild(flipCard);
+    folderEl.appendChild(header);
+    folderEl.appendChild(content);
+    archiveGallery.appendChild(folderEl);
+  }
+
+  populateFolderSelect();
+}
+
+/* 폴더 셀렉트 업데이트 */
+function populateFolderSelect() {
+  folderSelect.innerHTML = "";
+  const emptyOpt = document.createElement("option");
+  emptyOpt.value = "";
+  emptyOpt.textContent = "폴더를 선택하세요";
+  folderSelect.appendChild(emptyOpt);
+  Object.keys(folders).forEach(fname => {
+    const opt = document.createElement("option");
+    opt.value = fname;
+    opt.textContent = fname;
+    folderSelect.appendChild(opt);
+  });
+}
+
+/* 아카이브 열기 (보기 모드) */
+function openArchive(name, folder) {
+  isCreating = false;
+  currentArchiveName = name;
+  currentFolder = folder || "";
+  pendingArchiveName = "";
+  pendingFolder = "";
+  newImagesPreview = [];
+  deleteArchiveBtn.style.display = "inline-block";
+
+  // 첫 번째 이미지를 카드에 표시
+  const imgs = archives[name] || [];
+  if (imgs.length > 0) {
+    previewImage.src = imgs[0];
+    previewImage.style.display = "block";
+  } else {
+    previewImage.src = "";
+    previewImage.style.display = "none";
+  }
+
+  centerText.style.opacity = 0;
+  labels.forEach(l => l.style.opacity = 0);
+  archiveScreen.style.display = "flex";
+  textInput.style.opacity = 0;
+  uploadBox.style.opacity = 0;
+  folderSelect.style.opacity = 0;
+  overlayText.textContent = name;
+  screenNote.textContent = '아카이브 보기 모드입니다.';
+}
+
+/* 새 아카이브 작성 화면 열기 (임시 상태, 저장 전까지 데이터는 로컬에 저장되지 않음) */
+function openCreateMode() {
+  isCreating = true;
+  currentArchiveName = "";
+  currentFolder = "";
+  pendingArchiveName = "";
+  pendingFolder = "";
+  newImagesPreview = [];
+  overlayText.textContent = "";
+  previewImage.src = "";
+  previewImage.style.display = "none";
+  flipInner.classList.remove("flipped");
+  centerText.style.opacity = 0;
+  labels.forEach(l => l.style.opacity = 0);
+  archiveScreen.style.display = "flex";
+  textInput.style.opacity = 1;
+  folderSelect.style.opacity = 1;
+  uploadBox.style.opacity = 1;
+  deleteArchiveBtn.style.display = "none";
+  screenNote.textContent = "이미지를 업로드한 뒤 반드시 '저장'을 눌러야 폴더에 저장됩니다.";
+}
+
+/* 텍스트 입력 (새 아카이브 이름 임시 저장) */
+textInput.addEventListener("input", e => {
+  pendingArchiveName = e.target.value.trim();
+  overlayText.textContent = pendingArchiveName;
+});
+
+/* 업로드 동작: preview에 추가만 하고 저장은 saveBtn에서 처리 */
+const previewImage = document.getElementById("previewImage");
+
+// 카드 클릭 시 flip
+flipContainer.addEventListener("click", () => {
+  if (isCreating && newImagesPreview.length > 0) {
+    flipInner.classList.toggle("flipped");
+  }
+});
+
+uploadBox.addEventListener("click", () => fileInput.click());
+fileInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const dataUrl = ev.target.result;
+    // add to preview list only
+    newImagesPreview.push(dataUrl);
+    // Show preview in card
+    previewImage.src = dataUrl;
+    previewImage.style.display = "block";
+    renderPreviewList();
+  };
+  reader.readAsDataURL(file);
+});
+
+/* preview list 렌더: 카드에만 표시 */
+function renderPreviewList() {
+  // 카드 미리보기만 업데이트, 하단 목록은 표시하지 않음
+  if (newImagesPreview.length > 0) {
+    previewImage.src = newImagesPreview[newImagesPreview.length - 1];
+    previewImage.style.display = "block";
+  } else {
+    previewImage.src = "";
+    previewImage.style.display = "none";
+  }
+}
+
+/* composite 생성: 업로드된 이미지 위에 라벨 합성 — 라벨 실패 시 원본 사용 */
+function createCompositeDataUrl(imageDataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const lbl = new Image();
+    let imgLoaded = false;
+    let lblLoaded = false;
+    let finished = false;
+
+    const finishWith = (data) => {
+      if (finished) return;
+      finished = true;
+      resolve(data);
+    };
+
+    const timeoutId = setTimeout(() => {
+      // 라벨 로드 실패 시 원본 사용
+      if (!finished) finishWith(imageDataUrl);
+    }, 3000);
+
+    img.onload = () => { imgLoaded = true; tryDraw(); };
+    img.onerror = () => { imgLoaded = true; tryDraw(); };
+    lbl.onload = () => { lblLoaded = true; tryDraw(); };
+    lbl.onerror = () => { lblLoaded = false; tryDraw(); };
+
+    img.src = imageDataUrl;
+    lbl.src = labelSrc;
+
+    function tryDraw() {
+      if (!imgLoaded) return;
+      clearTimeout(timeoutId);
+      try {
+        const w = img.width || 800;
+        const h = img.height || 600;
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        if (lblLoaded && lbl.naturalWidth) {
+          const labelW = w * 0.2;
+          const aspect = (lbl.width && lbl.height) ? (lbl.width / lbl.height) : 1;
+          const labelH = labelW / aspect;
+          const margin = Math.min(w, h) * 0.03;
+          const x = w - labelW - margin;
+          const y = h - labelH - margin;
+          ctx.drawImage(lbl, x, y, labelW, labelH);
+        }
+        finishWith(canvas.toDataURL('image/png'));
+      } catch (err) {
+        console.error('composite error', err);
+        finishWith(imageDataUrl);
+      }
+    }
+  });
+}
+
+/* 저장 버튼: pendingArchiveName과 pendingFolder를 확인하고 preview 이미지들을 합성해 저장 */
+saveBtn.addEventListener("click", async () => {
+  if (!isCreating) return;
+  const name = pendingArchiveName || prompt("아카이브 이름을 입력하세요:");
+  if (!name) { alert("아카이브 이름이 필요합니다."); return; }
+  const folder = folderSelect.value || prompt("저장할 폴더를 선택하거나 이름을 입력하세요:");
+  if (!folder) { alert("폴더가 필요합니다."); return; }
+
+  // ensure structures
+  if (!archives[name]) archives[name] = [];
+  if (!folders[folder]) folders[folder] = [];
+
+  // push name into folder at the beginning if not already present
+  if (!folders[folder].includes(name)) {
+    folders[folder].unshift(name); // unshift instead of push to add at beginning
+  }
+
+  // composite each preview image then push
+  try {
+    if (newImagesPreview && newImagesPreview.length > 0) {
+      // 라벨 합성 없이 원본 이미지만 저장 (CORS 이슈 및 용량 문제 해결)
+      for (const dataUrl of newImagesPreview) {
+        archives[name].push(dataUrl);
+      }
+    }
+
+    try {
+      saveState();
+    } catch (storageErr) {
+      if (storageErr.name === 'QuotaExceededError') {
+        alert('저장 공간이 부족합니다. 일부 오래된 아카이브를 삭제해주세요.');
+        return;
+      }
+      throw storageErr;
+    }
+
+    updateGallery();
+    alert('저장 완료');
+  } catch (err) {
+    console.error('save error', err);
+    alert('저장 중 오류가 발생했습니다: ' + err.message);
+  } finally {
+    // reset screen
+    isCreating = false;
+    pendingArchiveName = "";
+    pendingFolder = "";
+    newImagesPreview = [];
+    archiveScreen.style.display = "none";
+    centerText.style.opacity = 1;
+    labels.forEach(l => l.style.opacity = 1);
+    overlayText.textContent = "";
+    textInput.value = "";
+    uploadedImage.src = "";
+    previewImage.src = "";
+    previewImage.style.display = "none";
+    textInput.style.opacity = 0;
+    uploadBox.style.opacity = 0;
+    folderSelect.style.opacity = 0;
+    deleteArchiveBtn.style.display = "none";
+  }
+});
+
+/* 취소 버튼: 생성 모드일 때는 저장하지 않고 취소 */
+cancelBtn.addEventListener("click", () => {
+  if (!confirm('저장하지 않고 취소하시겠습니까?')) return;
+  isCreating = false;
+  pendingArchiveName = "";
+  pendingFolder = "";
+  newImagesPreview = [];
+  archiveScreen.style.display = "none";
+  centerText.style.opacity = 1;
+  labels.forEach(l => l.style.opacity = 1);
+  overlayText.textContent = "";
+  textInput.value = "";
+  uploadedImage.src = "";
+  previewImage.src = "";
+  previewImage.style.display = "none";
+  textInput.style.opacity = 0;
+  uploadBox.style.opacity = 0;
+  folderSelect.style.opacity = 0;
+  deleteArchiveBtn.style.display = "none";
+});
+
+/* 뒤로 화살표: 보기 모드면 닫기, 생성 중이면 취소(저장하지 않음) */
+backArrow.addEventListener("click", () => {
+  if (isCreating) {
+    if (!confirm('저장하지 않고 나가시겠습니까?')) return;
+    // cancel create
+    newImagesPreview = [];
+  }
+  // close screen
+  isCreating = false;
+  pendingArchiveName = "";
+  pendingFolder = "";
+  archiveScreen.style.display = "none";
+  centerText.style.opacity = 1;
+  labels.forEach(l => l.style.opacity = 1);
+  overlayText.textContent = "";
+  textInput.value = "";
+  uploadedImage.src = "";
+  previewImage.src = "";
+  previewImage.style.display = "none";
+  currentArchiveName = "";
+  currentImage = "";
+  currentFolder = "";
+  textInput.style.opacity = 0;
+  uploadBox.style.opacity = 0;
+  folderSelect.style.opacity = 0;
+  deleteArchiveBtn.style.display = "none";
+});
+
+/* 아카이브 삭제 (사이드에서 호출) */
+function deleteArchive(archiveName, folderName) {
+  // remove from archives object
+  delete archives[archiveName];
+  // remove from all folders
+  for (const f in folders) {
+    folders[f] = folders[f].filter(a => a !== archiveName);
+  }
+  // remove empty folders? keep as is
+  saveState();
+  updateGallery();
+}
+
+/* 폴더 전체 삭제 (폴더와 내부 아카이브 모두 삭제) */
+function deleteFolder(folderName) {
+  const archiveList = folders[folderName] || [];
+  // delete each archive
+  archiveList.forEach(a => { delete archives[a]; });
+  delete folders[folderName];
+  saveState();
+  updateGallery();
+}
+
+/* 아카이브 보기 화면에서 아카이브 전체 삭제 버튼 */
+deleteArchiveBtn.addEventListener('click', () => {
+  if (!currentArchiveName) return;
+  if (!confirm(`${currentArchiveName} 아카이브를 삭제하시겠습니까?`)) return;
+  deleteArchive(currentArchiveName, currentFolder);
+  // close screen
+  backArrow.click();
+});
+
+/* 새 폴더 만들기 */
+newFolderBtn.addEventListener("click", () => {
+  const name = prompt("새 폴더 이름을 입력하세요:");
+  if (!name) return;
+  if (!folders[name]) {
+    folders[name] = [];
+    saveState();
+    updateGallery();
+    archiveGallery.classList.add('visible');
+  } else {
+    alert("같은 이름의 폴더가 이미 있습니다.");
+  }
+});
+
+/* 중앙 텍스트 클릭: 새 아카이브 생성 모드 진입 (저장 버튼으로 확정) */
+centerText.addEventListener("click", () => {
+  openCreateMode();
+});
+
+/* hover → 패널 나오기 + 마우스 오버 시 고정 */
+document.body.addEventListener("mousemove", (e) => {
+  const triggerZone = window.innerWidth - 200;
+  if (e.clientX > triggerZone) {
+    archiveGallery.classList.add("visible");
+  } else {
+    if (!archiveGallery.matches(':hover')) archiveGallery.classList.remove('visible');
+  }
+});
+archiveGallery.addEventListener('mouseenter', () => archiveGallery.classList.add('visible'));
+archiveGallery.addEventListener('mouseleave', () => archiveGallery.classList.remove('visible'));
+
+/* 초기 렌더 */
+updateGallery();
+</script>
+</body>
+</html>
+<!-- ...existing
